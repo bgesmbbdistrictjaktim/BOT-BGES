@@ -235,7 +235,7 @@ console.log('📱 Bot will handle all features properly');
 console.log('⚠️  Press Ctrl+C to stop');
 
 // Handle /start command
-bot.onText(/\/start/, (msg) => {
+bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const firstName = msg.from.first_name || 'User';
   const telegramId = msg.from.id.toString();
@@ -247,13 +247,14 @@ bot.onText(/\/start/, (msg) => {
 
   // Immediate ack so user sees bot is alive
   try {
-    bot.sendMessage(chatId, '👋 Bot aktif. Memproses /start...');
+    await bot.sendMessage(chatId, '👋 Bot aktif. Memproses /start...');
+    console.log(`✅ Sent /start ack to chat ${chatId}`);
   } catch (e) {
     console.warn('Failed to send immediate /start ack from handler:', e);
   }
   
   // Check if user is registered
-  checkUserRegistration(chatId, telegramId, firstName, msg.from.last_name || '');
+  await checkUserRegistration(chatId, telegramId, firstName, msg.from.last_name || '');
 });
 
 // Handle /help command
