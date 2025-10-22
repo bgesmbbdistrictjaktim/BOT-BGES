@@ -7,9 +7,23 @@ export async function POST(request: NextRequest) {
 
     const incomingSecret = request.headers.get('x-telegram-bot-api-secret-token') || request.headers.get('x-webhook-secret')
     const expectedSecret = process.env.WEBHOOK_SECRET || process.env.TELEGRAM_WEBHOOK_SECRET
-    if (expectedSecret && incomingSecret !== expectedSecret) {
-      return NextResponse.json({ ok: true })
+    const enforceSecret = process.env.ENFORCE_WEBHOOK_SECRET !== 'false'
+
+    if (expectedSecret) {
+      const isMatch = incomingSecret === expectedSecret
+      console.log('Webhook secret check', { hasIncoming: !!incomingSecret, isMatch, enforceSecret })
+      if (enforceSecret && !isMatch) {
+        // Secret mismatch; acknowledge without processing
+        return NextResponse.json({ ok: true })
+      }
     }
+
+    console.log('Incoming update summary', {
+      hasMessage: !!body?.message,
+      text: body?.message?.text,
+      hasCallback: !!body?.callback_query,
+      callbackData: body?.callback_query?.data
+    })
 
     const bot: any = (botModule as any).bot || (botModule as any)
     if (bot && typeof bot.processUpdate === 'function') {
