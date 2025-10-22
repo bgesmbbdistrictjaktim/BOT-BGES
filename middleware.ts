@@ -6,11 +6,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
   
-  // Allow health check endpoint
-  if (request.nextUrl.pathname.startsWith('/api/health')) {
-    return NextResponse.next()
-  }
-  
   // Allow cron endpoint
   if (request.nextUrl.pathname.startsWith('/api/cron')) {
     return NextResponse.next()

@@ -6,9 +6,6 @@
     "app/api/stats/route.ts": {
       "maxDuration": 10
     },
-    "app/api/health/route.ts": {
-      "maxDuration": 10
-    },
     "app/api/cron/route.ts": {
       "maxDuration": 30
     }
@@ -39,10 +36,6 @@
     }
   ],
   "rewrites": [
-    {
-      "source": "/health",
-      "destination": "/api/health"
-    },
     {
       "source": "/webhook",
       "destination": "/api/webhook"

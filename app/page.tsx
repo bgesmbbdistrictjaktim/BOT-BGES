@@ -1,4 +1,3 @@
-import { BotStatus } from '@/components/BotStatus'
 import { BotStats } from '@/components/BotStats'
 
 export default function Home() {
@@ -12,7 +11,6 @@ export default function Home() {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <BotStatus />
         <BotStats />
       </div>
       
