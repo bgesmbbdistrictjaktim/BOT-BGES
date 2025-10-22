@@ -1,0 +1,51 @@
+{
+  "functions": {
+    "app/api/webhook/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/stats/route.ts": {
+      "maxDuration": 10
+    },
+    "app/api/health/route.ts": {
+      "maxDuration": 10
+    },
+    "app/api/cron/route.ts": {
+      "maxDuration": 30
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "0 0 * * *"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization, x-webhook-secret"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/health",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/webhook",
+      "destination": "/api/webhook"
+    }
+  ]
+}
