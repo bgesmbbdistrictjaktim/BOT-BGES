@@ -1,5 +1,3 @@
-import { BotStats } from '@/components/BotStats'
-
 export default function Home() {
   return (
     <main className="container">
@@ -8,10 +6,6 @@ export default function Home() {
         <p className="text-lg text-gray-600">
           Bot yang berjalan 24/7 menggunakan Next.js dan Supabase
         </p>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <BotStats />
       </div>
       
       <div className="card mt-6">

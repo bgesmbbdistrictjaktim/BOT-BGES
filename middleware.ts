@@ -11,11 +11,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
   
-  // Allow stats endpoint
-  if (request.nextUrl.pathname.startsWith('/api/stats')) {
-    return NextResponse.next()
-  }
-  
   return NextResponse.next()
 }
 

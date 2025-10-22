@@ -1,4 +1,4 @@
-import { dbOperations, supabaseAdmin } from './supabase'
+import { dbOperations } from './supabase'
 import { AuthService } from './auth'
 
 export class BotLogic {
@@ -305,28 +305,12 @@ export class BotLogic {
   }
 
   private async getStatsResponse(): Promise<string> {
-    try {
-      console.log('Fetching bot statistics...');
-      const stats = await dbOperations.getBotStats();
-      
-      if (!stats) {
-        console.warn('No stats returned from database');
-        return '📊 Statistik Bot:\n\n❌ Data statistik tidak tersedia saat ini.\nSilakan coba lagi nanti.';
-      }
-
-      console.log('Stats retrieved successfully:', stats);
-      
-      return `📊 Statistik Bot:
-• Total Pesan: ${stats.total_messages || 0}
-• Total User: ${stats.total_users || 0}
-• Status: ${stats.status === 'online' ? '🟢 Online' : '🔴 Offline'}
-• Aktivitas Terakhir: ${stats.last_activity ? new Date(stats.last_activity).toLocaleString('id-ID') : 'Tidak diketahui'}
-• Uptime: ${Math.floor(process.uptime() / 3600)} jam`;
-      
-    } catch (error) {
-      console.error('Error fetching bot statistics:', error);
-      return '📊 Statistik Bot:\n\n❌ Maaf, tidak bisa mengambil statistik saat ini.\n\nDetail error: ' + (error instanceof Error ? error.message : 'Unknown error');
-    }
+    // Fitur statistik dinonaktifkan; tampilkan status sederhana tanpa akses DB
+    const uptimeHours = Math.floor(process.uptime() / 3600);
+    return `📊 Statistik Bot:
+• Status: 🟢 Online
+• Uptime: ${uptimeHours} jam
+• Catatan: fitur statistik dinonaktifkan`;
   }
 
   // Method untuk menambah respons kustom

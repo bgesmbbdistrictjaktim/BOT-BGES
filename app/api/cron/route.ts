@@ -11,9 +11,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Update bot status untuk menunjukkan bahwa bot masih aktif
-    await dbOperations.updateBotStats()
-
     // Log aktivitas cron
     console.log(`Cron job executed at ${new Date().toISOString()}`)
 

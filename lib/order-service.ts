@@ -131,13 +131,11 @@ export class OrderService {
         // Continue even if logging fails
       }
 
-      // Update bot stats
+      // Update bot stats (disabled)
       try {
-        await this.updateBotStats();
-        console.log('Bot stats updated');
+        // Stats disabled; skip
       } catch (statsError) {
-        console.error('Error updating bot stats:', statsError);
-        // Continue even if stats update fails
+        // No-op
       }
 
       return data;
@@ -415,36 +413,8 @@ export class OrderService {
 
   // Update bot statistics
   static async updateBotStats(): Promise<void> {
-    try {
-      // Get counts
-      const { data: totalOrders } = await supabase
-        .from('orders')
-        .select('id', { count: 'exact' });
-
-      const { data: activeOrders } = await supabase
-        .from('orders')
-        .select('id', { count: 'exact' })
-        .in('status', ['PENDING', 'IN_PROGRESS', 'ON_HOLD']);
-
-      const { data: completedOrders } = await supabase
-        .from('orders')
-        .select('id', { count: 'exact' })
-        .eq('status', 'CLOSED');
-
-      // Update stats
-      await supabase
-        .from('bot_stats')
-        .update({
-          total_orders: totalOrders?.length || 0,
-          active_orders: activeOrders?.length || 0,
-          completed_orders: completedOrders?.length || 0,
-          last_updated: new Date().toISOString()
-        })
-        .eq('id', 1);
-
-    } catch (error) {
-      console.error('Error updating bot stats:', error);
-    }
+    // Stats feature removed; keep no-op to avoid breaking references
+    return;
   }
 
   // Generate daily report
