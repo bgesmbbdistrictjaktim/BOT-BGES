@@ -2,6 +2,24 @@ const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 require('dotenv').config({ path: '.env.local' });
 
+// Dedup helpers (global to survive HMR/re-import)
+if (!globalThis.__BGES_DEDUP_CACHE) {
+  globalThis.__BGES_DEDUP_CACHE = new Map();
+}
+function __seen(key, ttlMs = 15000) {
+  const cache = globalThis.__BGES_DEDUP_CACHE;
+  const now = Date.now();
+  const last = cache.get(key);
+  if (last && now - last < ttlMs) return true;
+  cache.set(key, now);
+  if (cache.size > 1000) {
+    for (const [k, ts] of cache.entries()) {
+      if (now - ts > ttlMs) cache.delete(k);
+    }
+  }
+  return false;
+}
+
 // Helper functions for formatting
 function formatIndonesianDateTime(dateString) {
   if (!dateString) return 'Belum diset';
@@ -313,7 +331,7 @@ bot.onText(/\/progress/, (msg) => {
   console.log(`📨 Received /progress from ${msg.from.first_name} (${chatId})`);
   
   getUserRole(telegramId).then(role => {
-    if (role === 'Teknisi') {
+    if (role === 'TEKNISI') {
       showProgressMenu(chatId, telegramId);
     } else {
       bot.sendMessage(chatId, '❌ Hanya Teknisi yang dapat update progress.');
@@ -329,7 +347,7 @@ bot.onText(/\/evidence/, (msg) => {
   console.log(`📨 Received /evidence from ${msg.from.first_name} (${chatId})`);
   
   getUserRole(telegramId).then(role => {
-    if (role === 'Teknisi') {
+    if (role === 'TEKNISI') {
       showEvidenceMenu(chatId, telegramId);
     } else {
       bot.sendMessage(chatId, '❌ Hanya Teknisi yang dapat upload evidence.');
@@ -342,6 +360,12 @@ bot.on('callback_query', (callbackQuery) => {
   const chatId = callbackQuery.message.chat.id;
   const data = callbackQuery.data;
   const telegramId = callbackQuery.from.id.toString();
+
+  const key = `cb:${callbackQuery.id}`;
+  if (__seen(key)) {
+    console.log('🔁 Duplicate callback detected, ignoring:', key);
+    return;
+  }
   
   console.log(`📨 Received callback: ${data} from ${callbackQuery.from.first_name}`);
   
@@ -569,6 +593,12 @@ bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const telegramId = msg.from.id.toString();
   const text = msg.text;
+
+  const msgKey = `msg:${chatId}:${msg.message_id}`;
+  if (__seen(msgKey)) {
+    console.log('🔁 Duplicate message detected, ignoring:', msgKey);
+    return;
+  }
 
   console.log(`📨 Received message: "${text}" from ${telegramId}`);
   console.log(`🔍 Current userStates for ${telegramId}:`, userStates[telegramId]);
@@ -992,7 +1022,7 @@ async function getUserRole(telegramId) {
       .single();
     
     if (error || !user) return null;
-    return user.role;
+    return user.role === 'Teknisi' ? 'TEKNISI' : user.role;
   } catch (error) {
     console.error('Error getting user role:', error);
     return null;
@@ -4252,7 +4282,7 @@ async function registerUser(telegramId, firstName, role) {
       .insert({
         telegram_id: telegramId,
         name: firstName,
-        role: role
+        role: role === 'Teknisi' ? 'TEKNISI' : role
       });
     
     if (error) {

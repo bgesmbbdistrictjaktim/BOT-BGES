@@ -25,6 +25,25 @@ export async function POST(request: NextRequest) {
       callbackData: body?.callback_query?.data
     })
 
+    // Deduplicate by update_id to avoid double processing on retries
+    const updateId = body?.update_id
+    const cache = (globalThis as any).__processedUpdateIds || ((globalThis as any).__processedUpdateIds = new Map())
+    if (typeof updateId === 'number') {
+      const now = Date.now()
+      const lastTs = cache.get(updateId)
+      const ttl = 20000 // 20 seconds
+      if (lastTs && now - lastTs < ttl) {
+        console.log('Duplicate update_id detected, ignoring:', updateId)
+        return NextResponse.json({ ok: true, dedup: true })
+      }
+      cache.set(updateId, now)
+      if (cache.size > 5000) {
+        for (const [id, ts] of cache.entries()) {
+          if (now - ts > ttl) cache.delete(id)
+        }
+      }
+    }
+
     const bot: any = (botModule as any).bot || (botModule as any)
     if (bot && typeof bot.processUpdate === 'function') {
       bot.processUpdate(body)
