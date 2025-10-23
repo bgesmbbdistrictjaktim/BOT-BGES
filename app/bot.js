@@ -271,14 +271,22 @@ bot.onText(/\/start/, async (msg) => {
 
   // Immediate ack so user sees bot is alive
   try {
-    await bot.sendMessage(chatId, '👋 Bot aktif. Memproses /start...');
-    console.log(`✅ Sent /start ack to chat ${chatId}`);
+    const ackMap = (globalThis.__lastStartAckByChat || (globalThis.__lastStartAckByChat = new Map()));
+    const lastTs = ackMap.get(chatId) || 0;
+    const now = Date.now();
+    if (now - lastTs > 10000) {
+      await bot.sendMessage(chatId, '👋 Bot aktif. Memproses /start...');
+      ackMap.set(chatId, now);
+      console.log(`✅ Sent /start ack to chat ${chatId}`);
+    } else {
+      console.log(`⏱️ Skipping duplicate /start ack for chat ${chatId}`);
+    }
   } catch (e) {
     console.warn('Failed to send immediate /start ack from handler:', e);
   }
   
   // Check if user is registered
-  await checkUserRegistration(chatId, telegramId, firstName, msg.from.last_name || '');
+  await checkUserRegistration(chatId, telegramId, firstName, msg.from.last_name || '', true);
 });
 
 // Handle /help command
@@ -667,14 +675,14 @@ bot.on('message', async (msg) => {
       await handleReplyKeyboardButtons(chatId, telegramId, text, role);
       return;
     } else {
-      await checkUserRegistration(chatId, telegramId, msg.from.first_name || 'User', msg.from.last_name || '');
+      await checkUserRegistration(chatId, telegramId, msg.from.first_name || 'User', msg.from.last_name || '', false);
       return;
     }
   }
 });
 
 // Helper functions
-async function checkUserRegistration(chatId, telegramId, firstName, lastName) {
+async function checkUserRegistration(chatId, telegramId, firstName, lastName, fromStart = false) {
   try {
     // Guard against missing Supabase envs so we still show registration menu
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -709,25 +717,32 @@ async function checkUserRegistration(chatId, telegramId, firstName, lastName) {
       .single();
     
     if (error || !user) {
-      // User not registered, show registration options
       console.warn('User not found or error on select:', error);
-      bot.sendMessage(chatId, 
-        `Halo ${firstName}! 👋\n\n` +
-        'Selamat datang di Order Management Bot!\n\n' +
-        'Anda belum terdaftar dalam sistem.\n' +
-        'Silakan pilih role Anda:',
-        {
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: '📋 Daftar sebagai HD (Helpdesk)', callback_data: 'register_hd' }],
-              [{ text: '🔧 Daftar sebagai Teknisi', callback_data: 'register_teknis' }]
-            ]
+      if (fromStart) {
+        bot.sendMessage(chatId, 
+          `Halo ${firstName}! 👋\n\n` +
+          'Selamat datang di Order Management Bot!\n\n' +
+          'Anda belum terdaftar dalam sistem.\n' +
+          'Silakan pilih role Anda:',
+          {
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: '📋 Daftar sebagai HD (Helpdesk)', callback_data: 'register_hd' }],
+                [{ text: '🔧 Daftar sebagai Teknisi', callback_data: 'register_teknis' }]
+              ]
+            }
           }
-        }
-      );
+        );
+      } else {
+        bot.sendMessage(chatId, '❌ Anda belum terdaftar. Gunakan /start untuk mendaftar.');
+      }
     } else {
-      // User is registered, show welcome message
-      showWelcomeMessage(chatId, user.role, user.name);
+      const displayName = user.full_name || user.name || firstName;
+      if (fromStart) {
+        showWelcomeMessage(chatId, user.role, displayName);
+      } else {
+        // No-op for non-/start messages; avoid duplicating welcome
+      }
     }
   } catch (error) {
     console.error('Error checking user registration:', error);
@@ -1158,13 +1173,13 @@ function startCreateOrder(chatId, telegramId) {
   // Set session untuk order creation
   userSessions.set(chatId, {
     type: 'create_order',
-    step: 'order_id',
+    step: 'customer_name',
     data: {}
   });
    
 bot.sendMessage(chatId,
   '📋 Membuat Order Baru\n\n' +
-  '🆔 Silakan masukkan Order ID:'
+  '1️⃣ Nama Pelanggan:'
 
 
 
@@ -2676,28 +2691,9 @@ async function handleCreateOrderInput(chatId, telegramId, text, session) {
   );
   
   if (session.step === 'order_id') {
-    // Validasi Order ID tidak duplikat
-    const { data: existingOrder } = await supabase
-      .from('orders')
-      .select('id')
-      .eq('order_id', text)
-      .single();
-    
-    if (existingOrder) {
-      bot.sendMessage(chatId, 
-        '❌ Order ID sudah ada!\n\n' +
-        '🆔 Silakan masukkan Order ID yang berbeda:'
-      );
-      return;
-    }
-    
-    session.data.order_id = text;
+    // Deprecated: skip manual Order ID entry, move to customer_name
     session.step = 'customer_name';
-    
-    bot.sendMessage(chatId, 
-      '✅ Order ID: ' + text + '\n\n' +
-      '1️⃣ Nama Pelanggan:'
-    );
+    bot.sendMessage(chatId, '1️⃣ Nama Pelanggan:');
     
   } else if (session.step === 'customer_name') {
     session.data.customer_name = text;
@@ -2718,7 +2714,7 @@ async function handleCreateOrderInput(chatId, telegramId, text, session) {
     );
     
   } else if (session.step === 'customer_contact') {
-    session.data.contact = text;
+    session.data.customer_contact = text;
     session.step = 'sto_selection';
     
     bot.sendMessage(chatId, 
@@ -3324,18 +3320,18 @@ async function handleServiceTypeSelection(chatId, telegramId, serviceType) {
   // Try to get technicians mapped to the selected STO
   const { data: mappedTechs, error: mapError } = await supabase
     .from('technician_sto')
-    .select('user_id, name')
+    .select('user_id, full_name')
     .eq('sto', stoSelected);
 
   if (!mapError && mappedTechs && mappedTechs.length > 0) {
-    technicians = mappedTechs.map(t => ({ id: t.user_id, name: t.name }));
+    technicians = mappedTechs.map(t => ({ id: t.user_id, name: t.full_name }));
   } else {
     // Fallback: show all technicians
     const { data: allTechs, error: allError } = await supabase
       .from('users')
-      .select('id, name')
-      .eq('role', 'Teknisi');
-    technicians = allTechs || [];
+      .select('id, full_name')
+      .eq('role', 'TEKNISI');
+    technicians = (allTechs || []).map(t => ({ id: t.id, name: t.full_name }));
     error = allError || mapError || null;
   }
   
@@ -3384,7 +3380,7 @@ async function assignTechnician(chatId, telegramId, techId) {
     // Get technician name
     const { data: tech } = await supabase
       .from('users')
-      .select('name')
+      .select('full_name')
       .eq('id', techId)
       .single();
     
@@ -3399,19 +3395,14 @@ async function assignTechnician(chatId, telegramId, techId) {
     const { data: order, error } = await supabase
       .from('orders')
       .insert({
-        order_id: session.data.order_id,
         customer_name: session.data.customer_name,
         customer_address: session.data.customer_address,
-        contact: session.data.contact,
+        customer_contact: session.data.customer_contact,
         sto: session.data.sto,
         transaction_type: session.data.transaction_type,
         service_type: session.data.service_type,
-        assigned_technician: techId, // Primary/Coordinator technician
-        created_by: hdUser?.id,
-        technician_assigned_at: new Date().toLocaleString('sv-SE', {
-          timeZone: 'Asia/Jakarta'
-        }).replace(' ', 'T') + '.000Z',
-        status: 'Pending'
+        assigned_technician_id: techId,
+        created_by_hd_id: hdUser?.id
       })
       .select()
       .single();
@@ -3428,15 +3419,16 @@ async function assignTechnician(chatId, telegramId, techId) {
     // Send success message with technician notification
     bot.sendMessage(chatId, 
       '✅ Order Berhasil Dibuat!\n\n' +
-      `📋 Order ID: ${order.order_id}\n` +
+      `📋 Order Number: ${order.order_number}\n` +
+      `📋 Order ID: #${order.id}\n` +
       `👤 Pelanggan: ${order.customer_name}\n` +
       `🏠 Alamat: ${order.customer_address}\n` +
-      `📞 Kontak: ${order.contact}\n` +
+      `📞 Kontak: ${order.customer_contact}\n` +
       `🏢 STO: ${order.sto}\n` +
       `🔄 Type Transaksi: ${order.transaction_type}\n` +
       `🌐 Jenis Layanan: ${order.service_type}\n` +
-      `🔧 Teknisi: ${tech.name}\n` +
-      `📊 Status: Pending\n\n` +
+      `🔧 Teknisi: ${tech.full_name}\n` +
+      `📊 Status: PENDING\n\n` +
       'Teknisi akan mendapat notifikasi order baru.'
     );
     
@@ -3460,21 +3452,22 @@ async function notifyTechnician(techId, order) {
     // Get technician telegram ID
     const { data: tech } = await supabase
       .from('users')
-      .select('telegram_id, name')
+      .select('telegram_id, full_name')
       .eq('id', techId)
       .single();
     
     if (tech && tech.telegram_id) {
       bot.sendMessage(tech.telegram_id, 
         '🔔 Order Baru Ditugaskan!\n\n' +
-        `📋 Order ID: ${order.order_id}\n` +
+        `📋 Order Number: ${order.order_number}\n` +
+        `📋 Order ID: #${order.id}\n` +
         `👤 Pelanggan: ${order.customer_name}\n` +
         `🏠 Alamat: ${order.customer_address}\n` +
-        `📞 Kontak: ${order.contact}\n` +
+        `📞 Kontak: ${order.customer_contact}\n` +
         `🏢 STO: ${order.sto}\n` +
         `🔄 Type Transaksi: ${order.transaction_type}\n` +
         `🌐 Jenis Layanan: ${order.service_type}\n` +
-        `📊 Status: Pending\n\n` +
+        `📊 Status: PENDING\n\n` +
         'Silakan mulai dengan melakukan survey jaringan.'
       );
     }
