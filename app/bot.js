@@ -263,6 +263,32 @@ console.log('🤖 Starting Complete Order Management Bot...');
 console.log('📱 Bot will handle all features properly');
 console.log('⚠️  Press Ctrl+C to stop');
 
+// Initialize lib handlers with context
+const { createBotHandlers } = require('../lib/bot-handlers');
+const handlers = createBotHandlers({
+  bot,
+  __seen,
+  makeTextCommandKey,
+  makeCallbackKey,
+  makeMessageKey,
+  userSessions,
+  userStates,
+  checkUserRegistration,
+  getRoleOrRegisterNotice,
+  requireRole,
+  showHelpByRole,
+  startCreateOrder,
+  showMyOrders,
+  showProgressMenu,
+  showEvidenceMenu,
+  handleCallbackQuery,
+  handleMediaGroup,
+  handleOrderSearch,
+  handleEvidenceUploadFlow,
+  handleSessionInput,
+  getUserRole
+});
+
 // Handle /start command
 async function handleStartCommand(msg) {
   const chatId = msg.chat.id;
@@ -301,7 +327,7 @@ async function handleStartCommand(msg) {
 }
 
 bot.onText(/\/start/, async (msg) => {
-  await handleStartCommand(msg);
+  await handlers.handleStartCommand(msg);
 });
 
 // Handle /help command
@@ -324,7 +350,7 @@ async function handleHelpCommand(msg) {
 }
 
 bot.onText(/\/help/, (msg) => {
-  handleHelpCommand(msg);
+  handlers.handleHelpCommand(msg);
 });
 
 // Handle /order command (HD only)
@@ -347,7 +373,7 @@ async function handleOrderCommand(msg) {
 }
 
 bot.onText(/\/order/, (msg) => {
-  handleOrderCommand(msg);
+  handlers.handleOrderCommand(msg);
 });
 
 // Handle /myorders command
@@ -370,7 +396,7 @@ async function handleMyOrdersCommand(msg) {
 }
 
 bot.onText(/\/myorders/, (msg) => {
-  handleMyOrdersCommand(msg);
+  handlers.handleMyOrdersCommand(msg);
 });
 
 // Handle /progress command (Teknisi only)
@@ -393,7 +419,7 @@ async function handleProgressCommand(msg) {
 }
 
 bot.onText(/\/progress/, (msg) => {
-  handleProgressCommand(msg);
+  handlers.handleProgressCommand(msg);
 });
 
 // Handle /evidence command (Teknisi only)
@@ -416,7 +442,7 @@ async function handleEvidenceCommand(msg) {
 }
 
 bot.onText(/\/evidence/, (msg) => {
-  handleEvidenceCommand(msg);
+  handlers.handleEvidenceCommand(msg);
 });
 
 // Handle callback queries
@@ -437,7 +463,7 @@ function handleCallbackEntry(callbackQuery) {
 }
 
 bot.on('callback_query', (callbackQuery) => {
-  handleCallbackEntry(callbackQuery);
+  handlers.handleCallbackEntry(callbackQuery);
 });
 
 // Store media groups temporarily to handle batch uploads
@@ -460,7 +486,7 @@ function handlePhotoUpload(msg) {
 }
 
 bot.on('photo', (msg) => {
-  handlePhotoUpload(msg);
+  handlers.handlePhotoUpload(msg);
 });
 
 // Handle media group (batch photos)
@@ -710,7 +736,7 @@ async function handleIncomingMessage(msg) {
 }
 
 bot.on('message', async (msg) => {
-  await handleIncomingMessage(msg);
+  await handlers.handleIncomingMessage(msg);
 });
 
 // Helper functions
@@ -6712,11 +6738,11 @@ function handlePollingError(error) {
 }
 
 bot.on('error', (error) => {
-  handleBotError(error);
+  handlers.handleBotError(error);
 });
 
 bot.on('polling_error', (error) => {
-  handlePollingError(error);
+  handlers.handlePollingError(error);
 });
 
 console.log('✅ Complete bot started successfully!');
