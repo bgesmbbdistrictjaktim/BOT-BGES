@@ -20,6 +20,17 @@ function __seen(key, ttlMs = 15000) {
   return false;
 }
 
+// Dedup key helpers (ensure keys remain identical to previous inline format)
+function makeTextCommandKey(chatId, messageId, commandTag) {
+  return `text:${chatId}:${messageId}:${commandTag}`;
+}
+function makeCallbackKey(callbackId) {
+  return `cb:${callbackId}`;
+}
+function makeMessageKey(chatId, messageId) {
+  return `msg:${chatId}:${messageId}`;
+}
+
 // Helper functions for formatting
 function formatIndonesianDateTime(dateString) {
   if (!dateString) return 'Belum diset';
@@ -253,12 +264,12 @@ console.log('📱 Bot will handle all features properly');
 console.log('⚠️  Press Ctrl+C to stop');
 
 // Handle /start command
-bot.onText(/\/start/, async (msg) => {
+async function handleStartCommand(msg) {
   const chatId = msg.chat.id;
   const firstName = msg.from.first_name || 'User';
   const telegramId = msg.from.id.toString();
 
-  const key = `text:${chatId}:${msg.message_id}:/start`;
+  const key = makeTextCommandKey(chatId, msg.message_id, '/start');
   if (__seen(key)) {
     console.log('🔁 Duplicate /start detected, ignoring:', key);
     return;
@@ -287,14 +298,18 @@ bot.onText(/\/start/, async (msg) => {
   
   // Check if user is registered
   await checkUserRegistration(chatId, telegramId, firstName, msg.from.last_name || '', true);
+}
+
+bot.onText(/\/start/, async (msg) => {
+  await handleStartCommand(msg);
 });
 
 // Handle /help command
-bot.onText(/\/help/, (msg) => {
+async function handleHelpCommand(msg) {
   const chatId = msg.chat.id;
   const telegramId = msg.from.id.toString();
 
-  const key = `text:${chatId}:${msg.message_id}:/help`;
+  const key = makeTextCommandKey(chatId, msg.message_id, '/help');
   if (__seen(key)) {
     console.log('🔁 Duplicate /help detected, ignoring:', key);
     return;
@@ -302,21 +317,22 @@ bot.onText(/\/help/, (msg) => {
   
   console.log(`📨 Received /help from ${msg.from.first_name} (${chatId})`);
   
-  getUserRole(telegramId).then(role => {
-    if (role) {
-      showHelpByRole(chatId, role);
-    } else {
-      bot.sendMessage(chatId, '❌ Anda belum terdaftar. Gunakan /start untuk mendaftar.');
-    }
-  });
+  const role = await getRoleOrRegisterNotice(chatId, telegramId);
+  if (role) {
+    showHelpByRole(chatId, role);
+  }
+}
+
+bot.onText(/\/help/, (msg) => {
+  handleHelpCommand(msg);
 });
 
 // Handle /order command (HD only)
-bot.onText(/\/order/, (msg) => {
+async function handleOrderCommand(msg) {
   const chatId = msg.chat.id;
   const telegramId = msg.from.id.toString();
 
-  const key = `text:${chatId}:${msg.message_id}:/order`;
+  const key = makeTextCommandKey(chatId, msg.message_id, '/order');
   if (__seen(key)) {
     console.log('🔁 Duplicate /order detected, ignoring:', key);
     return;
@@ -324,21 +340,22 @@ bot.onText(/\/order/, (msg) => {
   
   console.log(`📨 Received /order from ${msg.from.first_name} (${chatId})`);
   
-  getUserRole(telegramId).then(role => {
-    if (role === 'HD') {
-      startCreateOrder(chatId, telegramId);
-    } else {
-      bot.sendMessage(chatId, '❌ Hanya Helpdesk yang dapat membuat order.');
-    }
-  });
+  const allowed = await requireRole(chatId, telegramId, 'HD', '❌ Hanya Helpdesk yang dapat membuat order.');
+  if (allowed) {
+    startCreateOrder(chatId, telegramId);
+  }
+}
+
+bot.onText(/\/order/, (msg) => {
+  handleOrderCommand(msg);
 });
 
 // Handle /myorders command
-bot.onText(/\/myorders/, (msg) => {
+async function handleMyOrdersCommand(msg) {
   const chatId = msg.chat.id;
   const telegramId = msg.from.id.toString();
 
-  const key = `text:${chatId}:${msg.message_id}:/myorders`;
+  const key = makeTextCommandKey(chatId, msg.message_id, '/myorders');
   if (__seen(key)) {
     console.log('🔁 Duplicate /myorders detected, ignoring:', key);
     return;
@@ -346,21 +363,22 @@ bot.onText(/\/myorders/, (msg) => {
   
   console.log(`📨 Received /myorders from ${msg.from.first_name} (${chatId})`);
   
-  getUserRole(telegramId).then(role => {
-    if (role) {
-      showMyOrders(chatId, telegramId, role);
-    } else {
-      bot.sendMessage(chatId, '❌ Anda belum terdaftar. Gunakan /start untuk mendaftar.');
-    }
-  });
+  const role = await getRoleOrRegisterNotice(chatId, telegramId);
+  if (role) {
+    showMyOrders(chatId, telegramId, role);
+  }
+}
+
+bot.onText(/\/myorders/, (msg) => {
+  handleMyOrdersCommand(msg);
 });
 
 // Handle /progress command (Teknisi only)
-bot.onText(/\/progress/, (msg) => {
+async function handleProgressCommand(msg) {
   const chatId = msg.chat.id;
   const telegramId = msg.from.id.toString();
 
-  const key = `text:${chatId}:${msg.message_id}:/progress`;
+  const key = makeTextCommandKey(chatId, msg.message_id, '/progress');
   if (__seen(key)) {
     console.log('🔁 Duplicate /progress detected, ignoring:', key);
     return;
@@ -368,21 +386,22 @@ bot.onText(/\/progress/, (msg) => {
   
   console.log(`📨 Received /progress from ${msg.from.first_name} (${chatId})`);
   
-  getUserRole(telegramId).then(role => {
-    if (role === 'TEKNISI') {
-      showProgressMenu(chatId, telegramId);
-    } else {
-      bot.sendMessage(chatId, '❌ Hanya Teknisi yang dapat update progress.');
-    }
-  });
+  const allowed = await requireRole(chatId, telegramId, 'TEKNISI', '❌ Hanya Teknisi yang dapat update progress.');
+  if (allowed) {
+    showProgressMenu(chatId, telegramId);
+  }
+}
+
+bot.onText(/\/progress/, (msg) => {
+  handleProgressCommand(msg);
 });
 
 // Handle /evidence command (Teknisi only)
-bot.onText(/\/evidence/, (msg) => {
+async function handleEvidenceCommand(msg) {
   const chatId = msg.chat.id;
   const telegramId = msg.from.id.toString();
 
-  const key = `text:${chatId}:${msg.message_id}:/evidence`;
+  const key = makeTextCommandKey(chatId, msg.message_id, '/evidence');
   if (__seen(key)) {
     console.log('🔁 Duplicate /evidence detected, ignoring:', key);
     return;
@@ -390,22 +409,23 @@ bot.onText(/\/evidence/, (msg) => {
   
   console.log(`📨 Received /evidence from ${msg.from.first_name} (${chatId})`);
   
-  getUserRole(telegramId).then(role => {
-    if (role === 'TEKNISI') {
-      showEvidenceMenu(chatId, telegramId);
-    } else {
-      bot.sendMessage(chatId, '❌ Hanya Teknisi yang dapat upload evidence.');
-    }
-  });
+  const allowed = await requireRole(chatId, telegramId, 'TEKNISI', '❌ Hanya Teknisi yang dapat upload evidence.');
+  if (allowed) {
+    showEvidenceMenu(chatId, telegramId);
+  }
+}
+
+bot.onText(/\/evidence/, (msg) => {
+  handleEvidenceCommand(msg);
 });
 
 // Handle callback queries
-bot.on('callback_query', (callbackQuery) => {
+function handleCallbackEntry(callbackQuery) {
   const chatId = callbackQuery.message.chat.id;
   const data = callbackQuery.data;
   const telegramId = callbackQuery.from.id.toString();
 
-  const key = `cb:${callbackQuery.id}`;
+  const key = makeCallbackKey(callbackQuery.id);
   if (__seen(key)) {
     console.log('🔁 Duplicate callback detected, ignoring:', key);
     return;
@@ -414,13 +434,17 @@ bot.on('callback_query', (callbackQuery) => {
   console.log(`📨 Received callback: ${data} from ${callbackQuery.from.first_name}`);
   
   handleCallbackQuery(callbackQuery);
+}
+
+bot.on('callback_query', (callbackQuery) => {
+  handleCallbackEntry(callbackQuery);
 });
 
 // Store media groups temporarily to handle batch uploads
 const mediaGroups = new Map();
 
 // Handle photo uploads
-bot.on('photo', (msg) => {
+function handlePhotoUpload(msg) {
   const chatId = msg.chat.id;
   const telegramId = msg.from.id.toString();
   
@@ -433,6 +457,10 @@ bot.on('photo', (msg) => {
     // Single photo
     handleSinglePhoto(msg, telegramId);
   }
+}
+
+bot.on('photo', (msg) => {
+  handlePhotoUpload(msg);
 });
 
 // Handle media group (batch photos)
@@ -633,12 +661,12 @@ async function handleSinglePhoto(msg, telegramId) {
 
 
 // Handle text messages (for session input)
-bot.on('message', async (msg) => {
+async function handleIncomingMessage(msg) {
   const chatId = msg.chat.id;
   const telegramId = msg.from.id.toString();
   const text = msg.text;
 
-  const msgKey = `msg:${chatId}:${msg.message_id}`;
+  const msgKey = makeMessageKey(chatId, msg.message_id);
   if (__seen(msgKey)) {
     console.log('🔁 Duplicate message detected, ignoring:', msgKey);
     return;
@@ -679,6 +707,10 @@ bot.on('message', async (msg) => {
       return;
     }
   }
+}
+
+bot.on('message', async (msg) => {
+  await handleIncomingMessage(msg);
 });
 
 // Helper functions
@@ -1078,6 +1110,23 @@ async function getUserRole(telegramId) {
     console.error('Error getting user role:', error);
     return null;
   }
+}
+
+// Role helpers
+async function getRoleOrRegisterNotice(chatId, telegramId) {
+  const role = await getUserRole(telegramId);
+  if (!role) {
+    bot.sendMessage(chatId, '❌ Anda belum terdaftar. Gunakan /start untuk mendaftar.');
+    return null;
+  }
+  return role;
+}
+
+async function requireRole(chatId, telegramId, requiredRole, denyMessage) {
+  const role = await getUserRole(telegramId);
+  if (role === requiredRole) return true;
+  bot.sendMessage(chatId, denyMessage);
+  return false;
 }
 
 function showWelcomeMessage(chatId, role, name) {
@@ -6654,12 +6703,20 @@ function safeSendMessage(bot, chatId, text, options = {}) {
 }
 
 // Handle errors
-bot.on('error', (error) => {
+function handleBotError(error) {
   console.error('❌ Bot error:', error);
+}
+
+function handlePollingError(error) {
+  console.error('❌ Polling error:', error);
+}
+
+bot.on('error', (error) => {
+  handleBotError(error);
 });
 
 bot.on('polling_error', (error) => {
-  console.error('❌ Polling error:', error);
+  handlePollingError(error);
 });
 
 console.log('✅ Complete bot started successfully!');
