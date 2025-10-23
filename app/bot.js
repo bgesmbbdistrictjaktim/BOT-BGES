@@ -257,6 +257,12 @@ bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const firstName = msg.from.first_name || 'User';
   const telegramId = msg.from.id.toString();
+
+  const key = `text:${chatId}:${msg.message_id}:/start`;
+  if (__seen(key)) {
+    console.log('🔁 Duplicate /start detected, ignoring:', key);
+    return;
+  }
   
   console.log(`📨 Received /start from ${firstName} (${chatId})`);
   
@@ -279,6 +285,12 @@ bot.onText(/\/start/, async (msg) => {
 bot.onText(/\/help/, (msg) => {
   const chatId = msg.chat.id;
   const telegramId = msg.from.id.toString();
+
+  const key = `text:${chatId}:${msg.message_id}:/help`;
+  if (__seen(key)) {
+    console.log('🔁 Duplicate /help detected, ignoring:', key);
+    return;
+  }
   
   console.log(`📨 Received /help from ${msg.from.first_name} (${chatId})`);
   
@@ -295,6 +307,12 @@ bot.onText(/\/help/, (msg) => {
 bot.onText(/\/order/, (msg) => {
   const chatId = msg.chat.id;
   const telegramId = msg.from.id.toString();
+
+  const key = `text:${chatId}:${msg.message_id}:/order`;
+  if (__seen(key)) {
+    console.log('🔁 Duplicate /order detected, ignoring:', key);
+    return;
+  }
   
   console.log(`📨 Received /order from ${msg.from.first_name} (${chatId})`);
   
@@ -311,6 +329,12 @@ bot.onText(/\/order/, (msg) => {
 bot.onText(/\/myorders/, (msg) => {
   const chatId = msg.chat.id;
   const telegramId = msg.from.id.toString();
+
+  const key = `text:${chatId}:${msg.message_id}:/myorders`;
+  if (__seen(key)) {
+    console.log('🔁 Duplicate /myorders detected, ignoring:', key);
+    return;
+  }
   
   console.log(`📨 Received /myorders from ${msg.from.first_name} (${chatId})`);
   
@@ -327,6 +351,12 @@ bot.onText(/\/myorders/, (msg) => {
 bot.onText(/\/progress/, (msg) => {
   const chatId = msg.chat.id;
   const telegramId = msg.from.id.toString();
+
+  const key = `text:${chatId}:${msg.message_id}:/progress`;
+  if (__seen(key)) {
+    console.log('🔁 Duplicate /progress detected, ignoring:', key);
+    return;
+  }
   
   console.log(`📨 Received /progress from ${msg.from.first_name} (${chatId})`);
   
@@ -343,6 +373,12 @@ bot.onText(/\/progress/, (msg) => {
 bot.onText(/\/evidence/, (msg) => {
   const chatId = msg.chat.id;
   const telegramId = msg.from.id.toString();
+
+  const key = `text:${chatId}:${msg.message_id}:/evidence`;
+  if (__seen(key)) {
+    console.log('🔁 Duplicate /evidence detected, ignoring:', key);
+    return;
+  }
   
   console.log(`📨 Received /evidence from ${msg.from.first_name} (${chatId})`);
   
